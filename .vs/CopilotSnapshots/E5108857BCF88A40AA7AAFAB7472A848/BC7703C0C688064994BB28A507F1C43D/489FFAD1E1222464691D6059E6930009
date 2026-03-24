@@ -1,0 +1,77 @@
+﻿from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..models.models import Conversation, Customer
+from pydantic import BaseModel
+from typing import List
+
+router = APIRouter()
+
+class ChatMessage(BaseModel):
+    source: str
+    message: str
+    customer_phone: str = None
+
+class ChatOut(BaseModel):
+    id: int
+    customer_id: int = None
+    channel: str
+    conversation_history: str
+
+    class Config:
+        orm_mode = True
+
+@router.post("/message", response_model=ChatOut)
+def post_message(msg: ChatMessage, db: Session = Depends(get_db)):
+    customer = None
+    if msg.customer_phone:
+        customer = db.query(Customer).filter(Customer.phone == msg.customer_phone).first()
+    conv = Conversation(customer_id=customer.id if customer else None, channel=msg.source, conversation_history=msg.message, last_message=msg.message)
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+    # placeholder AI response
+    conv.last_response = "Thanks for reaching out. Our agent will reply shortly."
+    db.commit()
+    db.refresh(conv)
+    return conv
+
+@router.get("/history/{customer_id}", response_model=List[ChatOut])
+def history(customer_id: int, db: Session = Depends(get_db)):
+    return db.query(Conversation).filter(Conversation.customer_id == customer_id).all()
+
+
+# Simple in-memory connection manager for WebSocket chat
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+
+@router.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # here you would call AI orchestration to generate a reply
+            from ..ai.ai_engine import ask_ai
+            reply = ask_ai(f"Customer ({client_id}) said: {data}")
+            await manager.send_personal_message(reply, websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)

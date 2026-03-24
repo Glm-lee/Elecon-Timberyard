@@ -1,0 +1,104 @@
+﻿from fastapi import APIRouter, Request, BackgroundTasks, Depends, Response
+from pydantic import BaseModel
+from ..database import get_db
+from sqlalchemy.orm import Session
+from ..models.models import Customer, Conversation, Lead
+from datetime import datetime
+import os
+
+router = APIRouter()
+
+
+def classify_interest(message: str) -> str:
+    txt = message.lower()
+    hot_keywords = ["price", "bei", "cost", "quantity", "qty", "deliver", "delivery", "order", "how many"]
+    greet_keywords = ["hi", "hello", "morning", "afternoon", "evening", "hey"]
+    if any(k in txt for k in hot_keywords):
+        return "hot"
+    if any(k in txt for k in greet_keywords) and len(txt.split()) <= 3:
+        return "cold"
+    return "warm"
+
+
+@router.post("/twilio")
+async def twilio_webhook(req: Request, bg: BackgroundTasks, db: Session = Depends(get_db)):
+    # Read raw body for signature validation
+    raw_body = await req.body()
+    form = await req.form()
+    from_number = form.get('From')
+    body = form.get('Body')
+
+    # Optional: validate Twilio signature if TWILIO_AUTH_TOKEN provided
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN", None)
+    sig = req.headers.get("X-Twilio-Signature")
+    validated = True
+    if twilio_token and sig:
+        try:
+            from twilio.request_validator import RequestValidator
+            validator = RequestValidator(twilio_token)
+            url = str(req.url)
+            # form is starlette.datastructures.FormData, convert to dict
+            params = {k: v for k, v in form.items()}
+            validated = validator.validate(url, params, sig)
+        except Exception:
+            validated = False
+
+    if not validated:
+        return Response(content="Invalid signature", status_code=400)
+
+    # Find or create customer
+    customer = None
+    if from_number:
+        customer = db.query(Customer).filter(Customer.phone == from_number).first()
+    if not customer:
+        customer = Customer(name="WhatsApp User", phone=from_number, preferred_channel="whatsapp")
+        db.add(customer)
+        db.commit()
+        db.refresh(customer)
+
+    # Create or append conversation
+    timestamp = datetime.utcnow().isoformat()
+    msg_entry = f"[{timestamp}] customer: {body}\n"
+    conv = Conversation(customer_id=customer.id, channel="whatsapp", conversation_history=msg_entry, last_message=body)
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+
+    # Create lead
+    interest = classify_interest(body or "")
+    lead = Lead(customer_id=customer.id, source_channel="whatsapp", interest_level=interest, status="new")
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+
+    # Call AI orchestration to get reply (placeholder)
+    try:
+        from ..ai.ai_engine import check_stock_and_build_context, ask_ai
+        context = check_stock_and_build_context()
+        prompt = (
+            "You are a timber sales assistant. Only use available stock and official prices from database. "
+            "Never invent stock or prices. Always ask quantity after price inquiry.\n"
+            f"Context: {context}\nCustomer: {body}\nAssistant:"
+        )
+        ai_reply = ask_ai(prompt)
+    except Exception:
+        ai_reply = "Thanks for contacting us. Our sales team will respond shortly."
+
+    # Update conversation with AI response
+    resp_entry = f"[{datetime.utcnow().isoformat()}] assistant: {ai_reply}\n"
+    conv.conversation_history = (conv.conversation_history or "") + resp_entry
+    conv.last_response = ai_reply
+    db.commit()
+
+    # Increment analytics could be implemented here (placeholder)
+
+    # Reply to Twilio using TwiML so Twilio sends message back to user
+    twiml = f"<Response><Message>{ai_reply}</Message></Response>"
+    return Response(content=twiml, media_type="application/xml")
+
+
+@router.post("/meta")
+async def meta_webhook(payload: dict):
+    # stub for Facebook/Instagram webhook
+    # payload will include messaging events
+    return {"status": "received", "payload": payload}

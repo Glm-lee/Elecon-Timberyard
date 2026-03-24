@@ -1,0 +1,128 @@
+﻿from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..models.models import Conversation, Customer
+from pydantic import BaseModel
+from typing import List
+
+router = APIRouter()
+
+class ChatMessage(BaseModel):
+    source: str
+    message: str
+    customer_phone: str = None
+
+class ChatOut(BaseModel):
+    id: int
+    customer_id: int = None
+    channel: str
+    conversation_history: str
+
+    class Config:
+        orm_mode = True
+
+@router.post("/message", response_model=ChatOut)
+def post_message(msg: ChatMessage, db: Session = Depends(get_db)):
+    customer = None
+    if msg.customer_phone:
+        customer = db.query(Customer).filter(Customer.phone == msg.customer_phone).first()
+    conv = Conversation(customer_id=customer.id if customer else None, channel=msg.source, conversation_history=msg.message, last_message=msg.message)
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+    # placeholder AI response
+    conv.last_response = "Thanks for reaching out. Our agent will reply shortly."
+    db.commit()
+    db.refresh(conv)
+    return conv
+
+@router.get("/history/{customer_id}", response_model=List[ChatOut])
+def history(customer_id: int, db: Session = Depends(get_db)):
+    return db.query(Conversation).filter(Conversation.customer_id == customer_id).all()
+
+
+# Simple in-memory connection manager for WebSocket chat
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+
+@router.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # here you would call AI orchestration to generate a reply
+            from ..ai.ai_engine import ask_ai
+            reply = ask_ai(f"Customer ({client_id}) said: {data}")
+            await manager.send_personal_message(reply, websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+
+# Admin notification websocket
+@router.websocket("/ws/admin")
+async def admin_ws(websocket: WebSocket, token: str = None):
+    # Expect token as query param: /ws/admin?token=...
+    from ..api.auth import get_current_user
+    from ..services.notifications import redis_client
+    from jose import JWTError, jwt
+    await websocket.accept()
+    try:
+        # simple token extraction
+        query = websocket.scope.get("query_string", b"").decode()
+        params = dict(x.split("=") for x in query.split("&") if "=" in x)
+        token = params.get("token")
+        if not token:
+            await websocket.close(code=4001)
+            return
+        # decode token (reuse SECRET_KEY from auth)
+        from ..api.auth import SECRET_KEY, ALGORITHM
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        admin_email = payload.get("sub")
+        # resolve admin id from DB
+        from ..database import SessionLocal
+        db = SessionLocal()
+        from ..models.models import AdminUser
+        admin = db.query(AdminUser).filter(AdminUser.email == admin_email).first()
+        db.close()
+        if not admin:
+            await websocket.close(code=4003)
+            return
+
+        # subscribe to redis channel for this admin
+        pubsub = redis_client.pubsub()
+        channel = f"admin:{admin.id}"
+        await pubsub.subscribe(channel)
+        try:
+            async for message in pubsub.listen():
+                if message and message.get("type") == "message":
+                    data = message.get("data")
+                    if isinstance(data, bytes):
+                        await websocket.send_text(data.decode())
+                    else:
+                        await websocket.send_text(str(data))
+        finally:
+            await pubsub.unsubscribe(channel)
+    except WebSocketDisconnect:
+        try:
+            await websocket.close()
+        except Exception:
+            pass

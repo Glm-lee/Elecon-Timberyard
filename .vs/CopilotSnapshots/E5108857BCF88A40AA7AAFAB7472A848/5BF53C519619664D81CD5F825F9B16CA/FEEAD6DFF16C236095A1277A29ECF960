@@ -1,0 +1,24 @@
+﻿from fastapi import APIRouter, Request, BackgroundTasks
+from pydantic import BaseModel
+
+router = APIRouter()
+
+class TwilioWebhook(BaseModel):
+    From: str
+    Body: str
+
+@router.post("/twilio")
+async def twilio_webhook(req: Request, bg: BackgroundTasks):
+    form = await req.form()
+    # Example fields: From, Body
+    from_number = form.get('From')
+    body = form.get('Body')
+    # enqueue processing, e.g., create lead or conversation
+    return {"status": "received", "from": from_number, "body": body}
+
+@router.post("/meta")
+async def meta_webhook(payload: dict):
+    # stub for Facebook/Instagram webhook
+    # payload will include messaging events
+    return {"status": "received", "payload": payload}
+*** End Patch

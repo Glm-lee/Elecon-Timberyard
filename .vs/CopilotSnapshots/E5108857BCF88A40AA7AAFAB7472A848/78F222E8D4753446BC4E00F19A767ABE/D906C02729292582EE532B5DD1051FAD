@@ -1,0 +1,31 @@
+﻿from fastapi import APIRouter, Depends
+from ..database import get_db
+from sqlalchemy.orm import Session
+from ..models.models import ConversationSession, Customer, ConversationMessage
+from ..api.auth import require_role
+from typing import List
+
+router = APIRouter()
+
+@router.get("/sessions")
+def list_sessions(status: str = "active", db: Session = Depends(get_db), current=Depends(require_role("staff"))):
+    q = db.query(ConversationSession).filter(ConversationSession.status == status).order_by(ConversationSession.last_activity.desc())
+    out = []
+    for s in q.all():
+        customer = db.query(Customer).filter(Customer.id == s.customer_id).first()
+        last_msg = db.query(ConversationMessage).filter(ConversationMessage.session_id == s.id).order_by(ConversationMessage.timestamp.desc()).first()
+        lead_score = "cold"
+        if s.conversation_state in ["awaiting_quote_confirmation", "awaiting_payment"]:
+            lead_score = "hot"
+        elif s.conversation_state in ["awaiting_quantity"]:
+            lead_score = "warm"
+        out.append({
+            "session_id": s.id,
+            "customer_name": customer.name if customer else None,
+            "phone": customer.phone if customer else None,
+            "current_state": s.conversation_state,
+            "lead_score": lead_score,
+            "last_message": last_msg.message_text if last_msg else None,
+            "last_activity": s.last_activity.isoformat()
+        })
+    return out

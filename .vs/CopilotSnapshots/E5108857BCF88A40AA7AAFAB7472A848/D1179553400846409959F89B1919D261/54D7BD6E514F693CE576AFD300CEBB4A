@@ -1,0 +1,40 @@
+﻿from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .api import products, orders, leads, chat, auth, webhooks
+from .database import engine, Base
+from .services import session_manager
+import asyncio
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Timber AI Sales Platform - Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(products.router, prefix="/products", tags=["products"])
+app.include_router(orders.router, prefix="/orders", tags=["orders"])
+app.include_router(leads.router, prefix="/leads", tags=["leads"])
+app.include_router(chat.router, prefix="/chat", tags=["chat"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+from .api import admin_sessions
+app.include_router(admin_sessions.router, prefix="/admin", tags=["admin"])
+
+
+
+@app.on_event("startup")
+async def start_background_tasks():
+    # start session cleaner loop in background
+    asyncio.create_task(session_manager.session_cleaner_loop())
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Timber AI Sales Platform - Backend running"}

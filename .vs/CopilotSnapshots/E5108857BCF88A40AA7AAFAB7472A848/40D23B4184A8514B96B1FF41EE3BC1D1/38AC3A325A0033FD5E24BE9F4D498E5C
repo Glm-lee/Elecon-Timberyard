@@ -1,0 +1,21 @@
+﻿from typing import Dict
+from fastapi import WebSocket
+
+# Simple in-memory map of admin_id -> websocket connections
+connections: Dict[int, WebSocket] = {}
+
+async def register(admin_id: int, ws: WebSocket):
+    connections[admin_id] = ws
+
+def unregister(admin_id: int):
+    if admin_id in connections:
+        del connections[admin_id]
+
+async def notify_admin(admin_id: int, payload: Dict):
+    ws = connections.get(admin_id)
+    if ws:
+        try:
+            await ws.send_json(payload)
+        except Exception:
+            unregister(admin_id)
+*** End Patch

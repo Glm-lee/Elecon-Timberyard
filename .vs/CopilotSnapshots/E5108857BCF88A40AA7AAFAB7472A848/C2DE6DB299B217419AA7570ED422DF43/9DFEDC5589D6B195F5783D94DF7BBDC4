@@ -1,0 +1,53 @@
+﻿from fastapi import APIRouter, Depends, HTTPException
+from ..database import get_db
+from sqlalchemy.orm import Session
+from ..models.models import ConversationSession, Customer, ConversationMessage
+from ..api.auth import require_role
+from typing import List
+
+router = APIRouter()
+
+
+@router.get("/sessions")
+def list_sessions(status: str = "active", page: int = 1, page_size: int = 20, db: Session = Depends(get_db), current=Depends(require_role("staff"))):
+    if page < 1:
+        raise HTTPException(status_code=400, detail="page must be >= 1")
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=400, detail="page_size must be between 1 and 100")
+
+    base_q = db.query(ConversationSession).filter(ConversationSession.status == status)
+    total = base_q.count()
+    q = base_q.order_by(ConversationSession.last_activity.desc()).offset((page - 1) * page_size).limit(page_size)
+    out = []
+    for s in q.all():
+        customer = db.query(Customer).filter(Customer.id == s.customer_id).first()
+        last_msg = db.query(ConversationMessage).filter(ConversationMessage.session_id == s.id).order_by(ConversationMessage.timestamp.desc()).first()
+        # unread count = customer messages not read
+        unread_count = db.query(ConversationMessage).filter(ConversationMessage.session_id == s.id, ConversationMessage.sender == "customer", ConversationMessage.read == False).count()
+        lead_score = "cold"
+        if s.conversation_state in ["awaiting_quote_confirmation", "awaiting_payment"]:
+            lead_score = "hot"
+        elif s.conversation_state in ["awaiting_quantity"]:
+            lead_score = "warm"
+        out.append({
+            "session_id": s.id,
+            "customer_name": customer.name if customer else None,
+            "phone": customer.phone if customer else None,
+            "current_state": s.conversation_state,
+            "lead_score": lead_score,
+            "last_message": last_msg.message_text if last_msg else None,
+            "last_activity": s.last_activity.isoformat(),
+            "unread_count": unread_count,
+            "channel": s.channel,
+        })
+    return {"total": total, "page": page, "page_size": page_size, "sessions": out}
+
+
+@router.post("/sessions/{session_id}/mark_read")
+def mark_session_read(session_id: int, db: Session = Depends(get_db), current=Depends(require_role("staff"))):
+    msgs = db.query(ConversationMessage).filter(ConversationMessage.session_id == session_id, ConversationMessage.sender == "customer", ConversationMessage.read == False).all()
+    for m in msgs:
+        m.read = True
+        db.add(m)
+    db.commit()
+    return {"status": "ok", "marked": len(msgs)}

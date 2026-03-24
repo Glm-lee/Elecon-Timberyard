@@ -1,0 +1,41 @@
+﻿from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..models.models import Conversation, Customer
+from pydantic import BaseModel
+from typing import List
+
+router = APIRouter()
+
+class ChatMessage(BaseModel):
+    source: str
+    message: str
+    customer_phone: str = None
+
+class ChatOut(BaseModel):
+    id: int
+    customer_id: int = None
+    channel: str
+    conversation_history: str
+
+    class Config:
+        orm_mode = True
+
+@router.post("/message", response_model=ChatOut)
+def post_message(msg: ChatMessage, db: Session = Depends(get_db)):
+    customer = None
+    if msg.customer_phone:
+        customer = db.query(Customer).filter(Customer.phone == msg.customer_phone).first()
+    conv = Conversation(customer_id=customer.id if customer else None, channel=msg.source, conversation_history=msg.message, last_message=msg.message)
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+    # placeholder AI response
+    conv.last_response = "Thanks for reaching out. Our agent will reply shortly."
+    db.commit()
+    db.refresh(conv)
+    return conv
+
+@router.get("/history/{customer_id}", response_model=List[ChatOut])
+def history(customer_id: int, db: Session = Depends(get_db)):
+    return db.query(Conversation).filter(Conversation.customer_id == customer_id).all()
