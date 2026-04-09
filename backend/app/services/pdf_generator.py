@@ -5,7 +5,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 COMPANY_NAME='Elecon Timberyard'
 COMPANY_TAGLINE='Quality Timber for Every Project'
-COMPANY_ADDRESS='Industrial Area, Nairobi, Kenya'
+COMPANY_ADDRESS='Juja, Nairobi, Kenya'
 COMPANY_PHONE='+254 700 000 000'
 COMPANY_EMAIL='info@elecontimberyard.co.ke'
 COMPANY_KRA_PIN='P000000000A'

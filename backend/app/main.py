@@ -1,7 +1,7 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from .api import products, orders, leads, chat, auth, webhooks
+from .api import products, orders, leads, chat, auth, webhooks, offers
 from .database import engine, Base
 from .services import session_manager
 import asyncio
@@ -43,6 +43,7 @@ async def add_cors_headers(request, call_next):
 app.include_router(products.router,  prefix='/products',  tags=['products'])
 app.include_router(orders.router,    prefix='/orders',    tags=['orders'])
 app.include_router(leads.router,     prefix='/leads',     tags=['leads'])
+app.include_router(offers.router,    prefix='/offers',    tags=['offers'])
 app.include_router(chat.router,      prefix='/chat',      tags=['chat'])
 app.include_router(auth.router,      prefix='/auth',      tags=['auth'])
 app.include_router(webhooks.router,  prefix='/webhooks',  tags=['webhooks'])

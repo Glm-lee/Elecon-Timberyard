@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Phone, Mail, MapPin, MessageCircle } from 'lucide-react'
 import BrandLogo from '@/components/brand/BrandLogo'
+import { whatsappUrl } from '@/lib/contacts'
 
 export default function Footer() {
   const year = new Date().getFullYear()
@@ -14,7 +15,7 @@ export default function Footer() {
             </div>
             <p className="text-stone-400 leading-relaxed max-w-xs mb-6">Premium quality timber for every construction project. Serving Nairobi and Kenya since 2005.</p>
             <div className="flex gap-3">
-              <a href="https://wa.me/254700000000" target="_blank" rel="noopener"
+              <a href={whatsappUrl('Hello, I need timber')} target="_blank" rel="noopener"
                 className="flex items-center gap-2 px-3 py-2 bg-green-600/20 text-green-400 rounded-lg text-sm hover:bg-green-600/30 transition-colors">
                 <MessageCircle className="w-4 h-4" /> WhatsApp
               </a>
@@ -27,7 +28,7 @@ export default function Footer() {
           <div>
             <p className="text-sm text-stone-500 font-medium uppercase tracking-wider mb-4">Quick Links</p>
             <ul className="space-y-2.5">
-              {[{ href: '/products', label: 'All Products' }, { href: '/about', label: 'About Us' }, { href: '/contact', label: 'Contact' }, { href: '/chat?source=footer', label: 'Get a Quote' }].map(link => (
+              {[{ href: '/products', label: 'All Products' }, { href: '/offers', label: 'Special Offers' }, { href: '/about', label: 'About Us' }, { href: '/contact', label: 'Contact' }, { href: '/chat?source=footer', label: 'Get a Quote' }].map(link => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-stone-400 hover:text-stone-200 transition-colors text-sm">{link.label}</Link>
                 </li>
@@ -39,7 +40,7 @@ export default function Footer() {
             <ul className="space-y-3.5">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                <span className="text-stone-400 text-sm">Industrial Area, Nairobi, Kenya</span>
+                <span className="text-stone-400 text-sm">Juja, Nairobi, Kenya</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-amber-500 flex-shrink-0" />
@@ -63,3 +64,4 @@ export default function Footer() {
     </footer>
   )
 }
+

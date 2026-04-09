@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/lib/auth-store'
 import Link from 'next/link'
-import { LayoutDashboard, MessageSquare, Package, ShoppingCart, Users, LogOut, Menu, X, Bell } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, Package, ShoppingCart, Users, LogOut, Menu, X, Bell, Percent } from 'lucide-react'
 import Cookies from 'js-cookie'
 import BrandLogo from '@/components/brand/BrandLogo'
 
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/inbox',     icon: MessageSquare,   label: 'Inbox' },
   { href: '/admin/products',  icon: Package,          label: 'Products' },
+  { href: '/admin/offers',    icon: Percent,          label: 'Offers' },
   { href: '/admin/orders',    icon: ShoppingCart,     label: 'Orders' },
   { href: '/admin/leads',     icon: Users,            label: 'Leads' },
 ]

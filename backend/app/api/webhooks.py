@@ -89,30 +89,6 @@ async def twilio_webhook(req: Request, bg: BackgroundTasks, db: Session = Depend
     except Exception:
         ai_reply = "Thanks for contacting us. Our sales team will respond shortly."
 
-    # Basic state extraction and transitions applied to session
-    text = (body or "").lower()
-    if any(k in text for k in ["cedar", "cypress", "pine", "mahogany"]):
-        session.current_product = next((k for k in ["cedar", "cypress", "pine", "mahogany"] if k in text), None)
-        session.conversation_state = "awaiting_size"
-    if any(sz in text for sz in ["4x2", "3x2", "2x2", "4x1", "3x1"]):
-        session.current_size = next((sz for sz in ["4x2", "3x2", "2x2", "4x1", "3x1"] if sz in text), None)
-        if session.current_product:
-            session.conversation_state = "awaiting_quantity"
-        else:
-            session.conversation_state = "awaiting_product"
-    import re
-    qty_match = re.search(r"(\d+)\s*(pieces|pcs|pieces|kg|bags)?", text)
-    if qty_match:
-        try:
-            session.current_quantity = int(qty_match.group(1))
-            session.conversation_state = "awaiting_location"
-        except Exception:
-            pass
-    if any(loc in text for loc in ["nairobi", "rongai", "ruaka", "kitengela", "ruiru"]):
-        session.current_location = next((loc for loc in ["nairobi", "rongai", "ruaka", "kitengela", "ruiru"] if loc in text), None)
-        if session.current_quantity:
-            session.conversation_state = "awaiting_quote_confirmation"
-
     # Append assistant message row
     assistant_msg = ConversationMessage(session_id=session.id, sender="assistant", message_text=ai_reply, message_type="text")
     db.add(assistant_msg)

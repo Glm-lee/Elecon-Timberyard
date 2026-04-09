@@ -2,6 +2,7 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import Link from 'next/link'
 import { Mail, MapPin, MessageCircle, Phone } from 'lucide-react'
+import { whatsappUrl } from '@/lib/contacts'
 
 export default function ContactPage() {
   return (
@@ -44,7 +45,7 @@ export default function ContactPage() {
                   <MapPin className="w-5 h-5 text-amber-700 mt-0.5" />
                   <div>
                     <p className="font-medium text-stone-900">Location</p>
-                    <p className="text-stone-600">Industrial Area, Nairobi, Kenya</p>
+                    <p className="text-stone-600">Juja, Nairobi, Kenya</p>
                   </div>
                 </li>
               </ul>
@@ -54,7 +55,7 @@ export default function ContactPage() {
               <h2 className="font-serif text-2xl text-stone-900 mb-5">Fastest Ways to Reach Us</h2>
               <div className="space-y-3">
                 <a
-                  href="https://wa.me/254700000000"
+                  href={whatsappUrl('Hello, I need timber')}
                   target="_blank"
                   rel="noopener"
                   className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700"
@@ -83,3 +84,4 @@ export default function ContactPage() {
     </>
   )
 }
+

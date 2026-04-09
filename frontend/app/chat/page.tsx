@@ -1,10 +1,11 @@
-﻿'use client'
+'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Navbar from '@/components/layout/Navbar'
 import { chatApi } from '@/lib/api'
 import { timeAgo } from '@/lib/utils'
 import { Send, Bot, User, Loader2, MessageCircle, Phone } from 'lucide-react'
+import { whatsappUrl } from '@/lib/contacts'
 
 const QUICK_PROMPTS = [
   'What timber do you have in stock?',
@@ -17,6 +18,7 @@ function ChatContent() {
   const searchParams = useSearchParams()
   const source = searchParams.get('source') || 'website'
   const productHint = searchParams.get('product') || ''
+  const prefillMessage = searchParams.get('prefill') || ''
   const [session, setSession] = useState<any>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState('')
@@ -27,6 +29,7 @@ function ChatContent() {
   const [phone, setPhone] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const prefillSentRef = useRef(false)
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
@@ -67,6 +70,12 @@ function ChatContent() {
     }
   }
 
+  useEffect(() => {
+    if (!started || !session || !prefillMessage || prefillSentRef.current) return
+    prefillSentRef.current = true
+    sendMessage(prefillMessage)
+  }, [started, session, prefillMessage])
+
   return (
     <div className="min-h-screen bg-stone-100 pt-20 flex flex-col">
       <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 flex flex-col">
@@ -82,7 +91,7 @@ function ChatContent() {
           </div>
           <div className="flex gap-2">
             <a href="tel:+254700000000" className="p-2 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700"><Phone className="w-4 h-4" /></a>
-            <a href="https://wa.me/254700000000" target="_blank" rel="noopener" className="p-2 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700"><MessageCircle className="w-4 h-4" /></a>
+            <a href={whatsappUrl('Hello, I need timber')} target="_blank" rel="noopener" className="p-2 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700"><MessageCircle className="w-4 h-4" /></a>
           </div>
         </div>
 
@@ -93,7 +102,11 @@ function ChatContent() {
             </div>
             <div>
               <h2 className="font-serif text-2xl font-semibold text-stone-900 mb-2">Start your conversation</h2>
-              <p className="text-stone-500 max-w-sm">Get instant stock checks, prices, and quotes.{productHint && ' Enquiring about: ' + productHint}</p>
+              <p className="text-stone-500 max-w-sm">
+                Get instant stock checks, prices, and quotes.
+                {productHint && ' Enquiring about: ' + productHint}
+                {prefillMessage && ' Offer request is ready to send when chat starts.'}
+              </p>
             </div>
             <div className="w-full max-w-sm space-y-3">
               <div><label className="label">Your name (optional)</label><input className="input" placeholder="e.g. James Kamau" value={name} onChange={e => setName(e.target.value)} /></div>
@@ -106,8 +119,8 @@ function ChatContent() {
             <div className="w-full max-w-sm pt-4 border-t border-stone-200">
               <p className="text-xs text-stone-400 mb-3">Or reach us directly:</p>
               <div className="flex gap-2">
-                <a href="https://wa.me/254700000000" target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">?? WhatsApp</a>
-                <a href="tel:+254700000000" className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-stone-800 text-white rounded-lg text-sm font-medium hover:bg-stone-900">?? Call</a>
+                <a href={whatsappUrl('Hello, I need timber')} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">WhatsApp</a>
+                <a href="tel:+254700000000" className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-stone-800 text-white rounded-lg text-sm font-medium hover:bg-stone-900">Call</a>
               </div>
             </div>
           </div>

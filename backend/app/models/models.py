@@ -17,6 +17,39 @@ class Product(Base):
     description = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    offer_items = relationship("OfferItem", back_populates="product")
+
+
+class Offer(Base):
+    __tablename__ = "offers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False, index=True)
+    badge = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    terms = Column(Text, nullable=True)
+    starts_at = Column(DateTime, nullable=True)
+    ends_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    items = relationship("OfferItem", back_populates="offer", cascade="all, delete-orphan")
+
+
+class OfferItem(Base):
+    __tablename__ = "offer_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    offer_id = Column(Integer, ForeignKey("offers.id"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    offer_price = Column(Float, nullable=False)
+    old_price = Column(Float, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    offer = relationship("Offer", back_populates="items")
+    product = relationship("Product", back_populates="offer_items")
 
 
 class ConversationSession(Base):

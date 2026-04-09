@@ -1,7 +1,8 @@
-﻿import Link from 'next/link'
+import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import { MessageCircle, ArrowRight, CheckCircle, Star, Truck, Shield, Phone, Package, Users, TrendingUp } from 'lucide-react'
+import { whatsappUrl, PHONE_DISPLAY } from '@/lib/contacts'
 
 const categories = [
   { name: 'Structural Timber', desc: 'Heavy-duty timber for construction, roofing, and framing.', tag: 'Most popular', color: 'bg-amber-50 border-amber-200' },
@@ -43,7 +44,7 @@ export default function HomePage() {
               From structural frames to premium hardwoods -- get instant quotes, check live stock, and order via WhatsApp, Instagram, or our website.
             </p>
             <div className="flex flex-wrap gap-3 mb-10">
-              <a href="https://wa.me/254700000000?text=Hello%2C%20I%20need%20timber" target="_blank" rel="noopener"
+              <a href={whatsappUrl('Hello, I need timber')} target="_blank" rel="noopener"
                 className="flex items-center gap-3 px-5 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-medium transition-all shadow-lg hover:-translate-y-0.5">
                 <MessageCircle className="w-5 h-5" />
                 <div className="text-left"><div className="text-sm font-semibold">WhatsApp</div><div className="text-xs opacity-75">Chat instantly</div></div>
@@ -56,7 +57,7 @@ export default function HomePage() {
               <a href="tel:+254700000000"
                 className="flex items-center gap-3 px-5 py-3 rounded-xl bg-stone-700 hover:bg-stone-600 text-white font-medium transition-all shadow-lg hover:-translate-y-0.5">
                 <Phone className="w-5 h-5" />
-                <div className="text-left"><div className="text-sm font-semibold">Call Us</div><div className="text-xs opacity-75">+254 700 000 000</div></div>
+                <div className="text-left"><div className="text-sm font-semibold">Call Us</div><div className="text-xs opacity-75">{PHONE_DISPLAY}</div></div>
               </a>
             </div>
             <div className="flex flex-wrap gap-6 text-stone-400 text-sm">
@@ -121,7 +122,7 @@ export default function HomePage() {
               <p className="text-amber-100 text-lg">Reach us on your preferred channel. Our AI sales assistant is available 24/7.</p>
             </div>
             <div className="flex flex-wrap gap-3 flex-shrink-0">
-              <a href="https://wa.me/254700000000" target="_blank" rel="noopener"
+              <a href={whatsappUrl('Hello, I need timber')} target="_blank" rel="noopener"
                 className="flex items-center gap-2 px-5 py-3 bg-white text-green-700 rounded-xl font-semibold hover:bg-green-50 transition-colors shadow-lg">
                 <MessageCircle className="w-5 h-5" /> WhatsApp
               </a>
@@ -159,5 +160,6 @@ export default function HomePage() {
     </>
   )
 }
+
 
 
